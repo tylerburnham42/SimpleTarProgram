@@ -1,0 +1,10 @@
+Yes, that is the way it works. Your examples aren't quite the same, though. Your first example reads from 10000, then 10001, then 10002, etc. The second needs a seek outside the loop to set the initial position. To be 100% equivalent, you need to have your second example look like:
+
+cpos=10000;
+dataFile.seekg(cpos,ios::beg);
+for (i=0;i<20;i++) {
+   dataFile.read(carray[i],1);
+}
+
+end<ƒ—<
+

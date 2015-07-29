@@ -1,0 +1,4 @@
+es, the file pointer is automatically moved by read and write operations. ...and not seeking improves the performance a lot. Also, using file.read(ptr, 20) is a lot faster than using 20 times file.read(ptr + i, 1). To get the same semantics, you'll need to navigate to the appropriate location, though, using one seek.
+
+Seeking in a file stream sets the stream into a state where it can continue to both read or write characters: To switch between reading and writing for a stream opened in read/write mode (std::ios_base::in | std::ios_base::out) it is necessary to introduce a seek. Each see, thus, set the available buffer up in a funny way which the stream doesn't need to do if it just reads or writes a sequence of characters. Also, when writing each seek at least checks whether it is necessary to write characters to get into an initial state for code conversion.<ƒ—<
+
