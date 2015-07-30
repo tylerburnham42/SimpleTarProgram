@@ -1,3 +1,11 @@
+//File: jtar.cpp
+//Author: Tyler Burnham 
+//Date: 07-29-2015
+//Description: Takes in command line arguments and preforms the following actions: 
+//  tar -cf archive.tar foo bar  # Create archive.tar from files.
+//  tar -tf archive.tar          # List all files in archive.tar verbosely.
+//  tar -xf archive.tar          # Extract all files from archive.tar.
+
 #include "file.h"
 
 #include <fstream>
@@ -16,7 +24,6 @@
 #include <vector>
 
 typedef char String[80];
-//typedef char largeBuffer[2056];
 
 void printHelp();
 void runCF(int argc, char* argv[]);
@@ -30,10 +37,13 @@ bool fileExists(const std::string& file);
 template <class T>
 string to_string (const T& t);
 
-
-
 using namespace std;
 
+//Takes command line arguments and runs the commands.
+// -cf -- runCF
+// -tf -- runTF
+// -xf -- runXF
+// --help -- Prints help file
 int main(int argc, char* argv[])
 {
     if(argc == 2)
@@ -54,7 +64,6 @@ int main(int argc, char* argv[])
     		return 1;
         }
 
-
 		if(strcmp(argv[1], "-cf") == 0)
 			runCF(argc, argv);
     	if(strcmp(argv[1], "-tf") == 0)
@@ -66,7 +75,7 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-
+//Print the help file 
 void printHelp()
 {
 	ifstream t;
@@ -80,54 +89,49 @@ void printHelp()
 	t.close();
 }
 
+//
 void runCF(int argc, char* argv[])
 {
     string tarPath = argv[2];
     vector<string> listOfAddresses;
     vector<File*> listOfFiles;
-    //cout << "CF" << endl;
+
+	//Takes all the remaining arguments adds them to list of addresses
     for(int x=1; x < argc-2; x++)
         listAll(argv[x+2],listOfAddresses);
 
-
-
+	//loop through the list of addresses and create files
     for(int x =0; x<listOfAddresses.size(); x++)
     {
-        //cout << listOfAddresses[x] << endl;
         struct stat st;
         stat(listOfAddresses[x].c_str(), &st);
         listOfFiles.push_back(new File(listOfAddresses[x].c_str(), to_string(st.st_mode).c_str(), 
                                       to_string(st.st_size).c_str(), 
                                       convertTime(st.st_mtime).c_str()));
     }
-    //cout << "-----------" << endl;
-
 
     fstream outfile (tarPath.c_str(), ios::out | ios::binary);
     File buffer;
 
+	//loop through all the files, check if its a directory if it is not add the file contents after the file info
     for(int x =0; x<listOfFiles.size(); x++)
     {
         buffer = *listOfFiles[x];
         if(isDir(buffer.getName()))
             buffer.flagAsDir();
     
-        //cout << buffer.getName() << endl;
         outfile.write((char *) &buffer, sizeof(buffer));
-        //outfile.seekp(sizeof(buffer), ios::cur);
+
         if(!buffer.isADir())
         {
             fstream  file(buffer.getName().c_str(), ios::in);
             outfile <<  file.rdbuf();
-
         }
-
     }
     outfile.close();
-
 }
 
-
+//Gets all the addresses and returns them in a vector. 
 void listAll(string s, vector<string>& listOfAddresses)
 {
     if(!fileExists(s))
@@ -139,8 +143,6 @@ void listAll(string s, vector<string>& listOfAddresses)
     stat(s.c_str(), &st);
     listOfAddresses.push_back(s);
     
-
-    //cout << s << endl;
     if(isDir(s))
     {
         DIR* d = opendir(s.c_str());
@@ -151,14 +153,11 @@ void listAll(string s, vector<string>& listOfAddresses)
             {
                 listAll (s + '/' + de->d_name, listOfAddresses);
             }
-        
         }
-        //string allFiles = to_string(system("ls"));
-        //cout << allFiles << endl;
     }
 }
 
-
+//Converts Unix time to the time format returned
 string convertTime(time_t timeIn)
 {
     time_t t = timeIn;
@@ -171,7 +170,7 @@ string convertTime(time_t timeIn)
 }
 
 
-
+//Converts c_string to string
 template <class T>
 inline string to_string (const T& t)
 {
@@ -180,6 +179,7 @@ inline string to_string (const T& t)
     return ss.str();
 }
 
+//checks if the file is a directory 
 bool isDir(string file)
 {
     struct stat st;
@@ -188,19 +188,22 @@ bool isDir(string file)
 
 }
 
+//checks if the file exists 
 bool fileExists(const std::string& file) 
 {
     struct stat buf;
     return (stat(file.c_str(), &buf) == 0);
 }
 
+//Checks the contents of the file and prints it
 void runTF(string tarPath)
 {
-	//cout << "TF" << endl;
     File buff;
     vector<File> listOfFiles;
     fstream  file(tarPath.c_str(), ios::in | ios::out | ios::binary);
-    while(file.read ((char *) &buff, sizeof(buff)))
+	
+	//Retrieves the files from the archive
+	while(file.read ((char *) &buff, sizeof(buff)))
     {
         
         listOfFiles.push_back(buff);
@@ -208,16 +211,11 @@ void runTF(string tarPath)
         {
             char largeBuffer[atoi(buff.getSize().c_str())];
             file.read((char *) &largeBuffer, sizeof(largeBuffer));
-            //cout << buff.getName() << endl << largeBuffer << endl;
         }
-
-
-        //cout << buff.getName() <<endl;
-        //file.seekp(sizeof(buff), ios::cur);
     }
     file.clear();
-
-    //cout  << "output" << endl;
+	
+	//Loops through the files and prints them
     for(int x = 0; x<listOfFiles.size(); x++)
     {
         cout << listOfFiles[x].getName() << endl;
@@ -225,16 +223,21 @@ void runTF(string tarPath)
 
 }
 
+//Extracts the tar archive and resets the file timestamps
 void runXF(string tarPath)
 {
-	//cout << "XF" << endl;
     File buff;
     vector<File> listOfFiles;
     fstream  infile(tarPath.c_str(), ios::in | ios::out | ios::binary);
+	
+	//Loops through the archive
     while(infile.read ((char *) &buff, sizeof(buff)))
     {
-        
+		//Adds a file to buffer
         listOfFiles.push_back(buff);
+		
+		//if the file is not a directory then read the remaining file contents
+		//Create the file and add the information
         if(!buff.isADir())
         {
             fstream  outfile(buff.getName().c_str(), ios::out);
@@ -243,25 +246,13 @@ void runXF(string tarPath)
             outfile  << largeBuffer << endl;
             system(("touch -t " + buff.getStamp() + " " + buff.getName()).c_str());
         }
+		//If the file is a directory make the directory and add the information.
         else
         {
             if(!fileExists(buff.getName()))
                 system(("mkdir " + to_string(buff.getName())).c_str());
         }
-
-
-        //cout << buff.getName() <<endl;
-        //file.seekp(sizeof(buff), ios::cur);
     }
     infile.clear();
-
-    /*
-    cout  << "output" << endl;
-    for(int x = 0; x<listOfFiles.size(); x++)
-    {
-        cout << listOfFiles[x].getName() << endl;
-    }
-    */  
-
 
 }
